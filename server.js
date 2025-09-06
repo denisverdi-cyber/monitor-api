@@ -22,15 +22,17 @@ app.get("/monitor_cucina", async (req, res) => {
     const result = await pool.query(
       `SELECT 
           o.reparto,
-          o.ora,
-          o.desc_tipologia,
+          MIN(o.ora) AS ora,
+          t.descrizione AS desc_tipologia,
           r.descrizione,
           SUM(r.quantita) AS quantita
        FROM ordini o
        JOIN righe r ON o.id = r.id_ordine
-       WHERE o.stato = 'ordinato'
-       GROUP BY o.reparto, o.ora, o.desc_tipologia, r.descrizione
-       ORDER BY o.ora ASC`,
+       JOIN articoli a ON r.type = a.id
+       JOIN tipologie t ON a.id_tipologia = t.id
+       WHERE o.stato = $1
+       GROUP BY o.reparto, t.descrizione, r.descrizione
+       ORDER BY MIN(o.ora) ASC`,
       [stato]
     );
 
@@ -56,12 +58,4 @@ app.get("/monitor_cucina", async (req, res) => {
 
     res.json(response);
   } catch (err) {
-    console.error("Errore query:", err);
-    res.status(500).json({ error: "Errore interno al server" });
-  }
-});
-
-// Avvio server
-app.listen(port, () => {
-  console.log(`✅ Server attivo su http://localhost:${port}`);
-});
+    console.error("Errore qu
