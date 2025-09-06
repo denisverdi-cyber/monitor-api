@@ -30,7 +30,7 @@ app.get("/monitor_cucina", async (req, res) => {
        JOIN righe r ON o.id = r.id_ordine
        JOIN articoli a ON r.type = a.id
        JOIN tipologie t ON a.id_tipologia = t.id
-       WHERE o.stato = $1
+       WHERE o.stato = 'ordinato'
        GROUP BY o.reparto, t.descrizione, r.descrizione
        ORDER BY MIN(o.ora) ASC`,
       [stato]
@@ -59,3 +59,4 @@ app.get("/monitor_cucina", async (req, res) => {
     res.json(response);
   } catch (err) {
     console.error("Errore qu
+
