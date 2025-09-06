@@ -21,7 +21,7 @@ app.get("/monitor_cucina", async (req, res) => {
   const reparto = req.query.reparto || null;
 
   try {
-    let query = "SELECT reparto, quantita, descrizione, ora, desc_tipologia FROM righe WHERE stato = $1";
+    let query = "SELECT reparto, quantita, descrizione, ora, desc_tipologia FROM ordini WHERE stato = $1";
     let params = [stato];
 
     if (reparto) {
@@ -52,6 +52,7 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`✅ API in ascolto su http://localhost:${PORT}`);
 });
+
 
 
 
