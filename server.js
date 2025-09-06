@@ -3,56 +3,65 @@ import pkg from "pg";
 import cors from "cors";
 
 const { Pool } = pkg;
-
 const app = express();
-app.use(cors());
+const port = process.env.PORT || 3000;
 
+// Configura connessione Neon.tech
 const pool = new Pool({
-  host: process.env.PGHOST,
-  database: process.env.PGDATABASE,
-  user: process.env.PGUSER,
-  password: process.env.PGPASSWORD,
-  port: 5432,
+  connectionString: process.env.DATABASE_URL, // oppure copia direttamente la stringa da Neon
   ssl: { rejectUnauthorized: false }
 });
 
+app.use(cors());
+
+// Endpoint monitor cucina
 app.get("/monitor_cucina", async (req, res) => {
   const stato = req.query.stato || "ordinato";
-  const reparto = req.query.reparto || null;
 
   try {
-    let query = "SELECT reparto, quantita, descrizione, ora, desc_tipologia FROM ordini WHERE stato = $1";
-    let params = [stato];
+    const result = await pool.query(
+      `SELECT 
+         o.id AS id_ordine,
+         o.reparto,
+         o.ora,
+         r.quantita,
+         r.descrizione,
+         o.desc_tipologia
+       FROM ordini o
+       JOIN righe r ON o.id = r.id_ordine
+       WHERE o.stato = $1
+       ORDER BY o.ora ASC`,
+      [stato]
+    );
 
-    if (reparto) {
-      query += " AND reparto = $2";
-      params.push(reparto);
-    }
+    // Raggruppa per reparto
+    const grouped = {};
+    result.rows.forEach(row => {
+      if (!grouped[row.reparto]) {
+        grouped[row.reparto] = [];
+      }
+      grouped[row.reparto].push({
+        quantita: row.quantita,
+        descrizione: row.descrizione,
+        ora: row.ora,
+        desc_tipologia: row.desc_tipologia
+      });
+    });
 
-    const result = await pool.query(query, params);
-
-    const data = result.rows.map(r => ({
-      reparto: r.reparto,
-      quantita_e_descrizioni: [{
-        quantita: r.quantita,
-        descrizione: r.descrizione,
-        ora: r.ora,
-        desc_tipologia: r.desc_tipologia
-      }]
+    // Trasforma in array
+    const response = Object.keys(grouped).map(rep => ({
+      reparto: rep,
+      quantita_e_descrizioni: grouped[rep]
     }));
 
-    res.json(data);
+    res.json(response);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Errore nella query" });
+    console.error("Errore query:", err);
+    res.status(500).json({ error: "Errore interno al server" });
   }
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`✅ API in ascolto su http://localhost:${PORT}`);
+// Avvio server
+app.listen(port, () => {
+  console.log(`✅ Server attivo su http://localhost:${port}`);
 });
-
-
-
-
